@@ -10,7 +10,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /pilot_data
-RUN git clone http://github.com/davidath/bde-pilot-2.git
+RUN git clone https://github.com/big-data-europe/pilot-sc5-cycle3
 RUN apt-get remove -y python-setuptools
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python get-pip.py
