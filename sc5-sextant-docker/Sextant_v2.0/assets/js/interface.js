@@ -586,6 +586,7 @@ function estimateLocation() {
     var hour = hourdiv.options[hourdiv.selectedIndex].value;
     var timestamp = date + " " + hour + ":00:00";
     clearDispersion();
+    clearPopGrid();
     vector.getSource().forEachFeature(function(feature) {
         var s = document.getElementById('stat_info');
         for (i = 0; i < s.childNodes.length; i++) {
@@ -805,6 +806,7 @@ function drawDispersion(idx) {
     var styling = null;
     var label = 'dispersion_' + idx;
     clearDispersion();
+    clearPopGrid();
     vector.getSource().forEachFeature(function(feature) {
         var s = document.getElementById('stat_info');
         for (i = 0; i < s.childNodes.length; i++) {

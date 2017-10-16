@@ -172,7 +172,8 @@ def load_class_weather(cur, date, origin):
     # Safe query is used due to multiple workers accessing the same database
     # and connection.
     resp = DBConn().safequery("select filename,hdfs_path,GHT,EXTRACT(EPOCH FROM TIMESTAMP '" +
-                date + "' - date)/3600/24 as diff from weather order by diff desc;")
+                date + "' - date)/3600/24 as diff from weather group by date\
+                having EXTRACT(EPOCH FROM TIMESTAMP '" + date + "' - date)/3600/24 >= 0 order by diff;")
     row = resp.fetchone()
     # If model has mult in its title then we need multiple levels (500,700,900 hPa)
     # of the GHT variable.
@@ -431,7 +432,8 @@ def load_weather_data(cur, date, origin):
     # Safe query is used due to multiple workers accessing the same database
     # and connection.
     resp = DBConn().safequery("select filename,hdfs_path,GHT,EXTRACT(EPOCH FROM TIMESTAMP '" +
-                date + "' - date)/3600/24 as diff from weather order by diff desc;")
+                date + "' - date)/3600/24 as diff from weather group by date\
+                having EXTRACT(EPOCH FROM TIMESTAMP '" + date + "' - date)/3600/24 >= 0 order by diff;")
     res = resp.fetchone()
     # If model has mult in its title then we need multiple levels (500,700,900 hPa)
     # of the GHT variable.
