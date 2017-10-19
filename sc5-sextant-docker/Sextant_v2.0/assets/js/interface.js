@@ -636,12 +636,13 @@ function estimateLocation() {
                         res_str = 'Estimated sources: <br> <table style="border-collapse: collapse;"><tr><th style="padding: 8px;">Station<br>name</th><th style="padding: 8px;">Score</th><th style="padding: 8px;">Draw</th></tr>';
                         for (var i = 0; i < resp['scores'].length; i++) {
                             if (resp['scores'][i] != 0) {
-                                res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button><button type="button" class="btn btn-primary" onclick="getHospitals('+i+')">Hospitals</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
+                                res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button><button type="button" class="btn btn-primary" onclick="checkHosp('+i+')">Hospitals</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
                                 }
                         }
                         res_str += '</table>';
                         res.innerHTML = res_str;
                         resp.affected = [{},{},{}];
+                        resp.hospitals = [{},{},{}];
                         loader.style.display = 'none';
                         eheader.style.display = 'block';
                     } else {
@@ -685,7 +686,7 @@ function checkClassProgress(id){
                      res_str = 'Estimated sources: <br> <table style="border-collapse: collapse;"><tr><th style="padding: 8px;">Station<br>name</th><th style="padding: 8px;">Score</th><th style="padding: 8px;">Draw</th></tr>';
                      for (var i = 0; i < resp['scores'].length; i++) {
                          if (resp['scores'][i] != 0) {
-                             res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button><button type="button" class="btn btn-primary" onclick="getHospitals('+i+')">Hospitals</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
+                             res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button><button type="button" class="btn btn-primary" onclick="checkHosp('+i+')">Hospitals</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
                              }
                      }
                      res_str += '</table>';
@@ -851,7 +852,7 @@ function checkTaskProgressHosp(id,idx){
   };
 }
 
-function drawHospGrid(idx, thres) {
+function drawHospGrid(idx) {
     clearPopGrid();
     clearHospGrid();
     var slider = document.getElementById('p_slider');
@@ -863,11 +864,11 @@ function drawHospGrid(idx, thres) {
         var style = new ol.style.Style({
                   image: new ol.style.Icon({
                       src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Hospital_sign.svg/2000px-Hospital_sign.svg.png',
-                      size: [1024, 1024],
-                      scale: 0.1
+                      size: [2000, 2000],
+                      scale: 0.01
                   })
               });
-        feat.set('tags',geojsonObject.features[i].properties['tags']);
+        feat.set('tags',geojsonObject.features[i].properties['TAGS']);
         feat.setStyle(style);
         var vec = vector.getSource();
         vec.addFeature(feat);
@@ -883,6 +884,14 @@ function checkPop(idx){
     }
 }
 
+function checkHosp(idx){
+  if (JSON.stringify(resp.hospitals[idx]) === JSON.stringify({})) {
+    getHospitals(idx);
+  }
+  else{
+    drawHospGrid(idx);
+  }
+}
 
 function drawDispersion(idx) {
     var styling = null;

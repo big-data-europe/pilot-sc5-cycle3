@@ -874,6 +874,6 @@ def hosp(cell_pols,disp):
     timing(start,time.time())
     # Build response in JSON format
     for p,point in enumerate(multi_points):
-        jpols.append(dict(type='Feature', properties={"TAGS":unicode(point[1])}, geometry=mapping(point[0])))
+        jpols.append(dict(type='Feature', properties={"TAGS":point[1]}, geometry=mapping(point[0])))
     end_res = dict(type='FeatureCollection', crs={ "type": "name", "properties": { "name":"urn:ogc:def:crs:OGC:1.3:CRS84" }},features=jpols)
     return json.dumps(end_res)
