@@ -587,6 +587,7 @@ function estimateLocation() {
     var timestamp = date + " " + hour + ":00:00";
     clearDispersion();
     clearPopGrid();
+    clearHospGrid();
     vector.getSource().forEachFeature(function(feature) {
         var s = document.getElementById('stat_info');
         for (i = 0; i < s.childNodes.length; i++) {
@@ -635,7 +636,7 @@ function estimateLocation() {
                         res_str = 'Estimated sources: <br> <table style="border-collapse: collapse;"><tr><th style="padding: 8px;">Station<br>name</th><th style="padding: 8px;">Score</th><th style="padding: 8px;">Draw</th></tr>';
                         for (var i = 0; i < resp['scores'].length; i++) {
                             if (resp['scores'][i] != 0) {
-                                res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
+                                res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button><button type="button" class="btn btn-primary" onclick="getHospitals('+i+')">Hospitals</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
                                 }
                         }
                         res_str += '</table>';
@@ -684,7 +685,7 @@ function checkClassProgress(id){
                      res_str = 'Estimated sources: <br> <table style="border-collapse: collapse;"><tr><th style="padding: 8px;">Station<br>name</th><th style="padding: 8px;">Score</th><th style="padding: 8px;">Draw</th></tr>';
                      for (var i = 0; i < resp['scores'].length; i++) {
                          if (resp['scores'][i] != 0) {
-                             res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
+                             res_str += '<tr><td style="padding: 8px;">'+resp['stations'][i] + '</td><td style="padding: 8px;">' + resp['scores'][i] + '</td><td style="padding: 8px;"><form id="ui_form_'+i+'"><button type="button" class="btn btn-primary" onclick="drawDispersion('+i+')">Plume</button><button type="button" class="btn btn-primary" onclick="checkPop('+i+')">Affected areas</button><button type="button" class="btn btn-primary" onclick="getHospitals('+i+')">Hospitals</button></form><div id="loader_ic_'+i+'" class="loader" style="display:none;"></div></td></tr>';
                              }
                      }
                      res_str += '</table>';
@@ -763,6 +764,41 @@ function getPopulation(idx){
   // });
 }
 
+
+function getHospitals(idx){
+  var slider = document.getElementById('div_slider');
+  var thres = document.getElementById('p_thres');
+  var click = document.getElementById('ui_form_'+idx);
+  var load = document.getElementById('loader_ic_'+idx);
+  load.style.display = 'block';
+  click.style.display = 'none';
+  $.ajax({
+      type: 'POST',
+      url: listener_ip + "hospital/",
+      data: JSON.stringify(resp.dispersions[idx]),
+      success: function(result) {
+        var task = JSON.parse(result);
+        checkTaskProgressHosp(task['id'],idx);
+      },
+      async: true
+    });
+  // $.ajax({
+  //     type: 'POST',
+  //     url: listener_ip + "population/",
+  //     data: JSON.stringify(resp.dispersions[idx]),
+  //     success: function(result) {
+          // var pop_result = JSON.parse(result);
+          // resp.affected[idx] = pop_result;
+          // slider.style.display = 'block';
+          // thres.style.display = 'block'
+          // load.style.display = 'none';
+          // click.style.display = 'block';
+          // initPop(idx);
+  //     },
+  //     async: false
+  // });
+}
+
 function checkTaskProgress(id,idx){
   var req = new XMLHttpRequest();
     req.open("GET", listener_ip+"status/" + id, true);
@@ -791,6 +827,52 @@ function checkTaskProgress(id,idx){
   };
 }
 
+function checkTaskProgressHosp(id,idx){
+  var req = new XMLHttpRequest();
+    req.open("GET", listener_ip+"status/" + id, true);
+    req.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
+    req.send();
+    req.onloadend = function() {
+      var task = JSON.parse(req.responseText);
+      if (task['state'] != 'PENDING' && task['state'] != 'PROGRESS') {
+            var click = document.getElementById('ui_form_'+idx);
+            var load = document.getElementById('loader_ic_'+idx);
+            var hosp_result = JSON.parse(task['result']);
+            resp.hospitals[idx] = hosp_result;
+            load.style.display = 'none';
+            click.style.display = 'block';
+            drawHospGrid(idx);
+      }
+      else{
+          setTimeout(function() {
+                     checkTaskProgressHosp(id,idx);
+                 }, 2000);
+      }
+  };
+}
+
+function drawHospGrid(idx, thres) {
+    clearPopGrid();
+    clearHospGrid();
+    var slider = document.getElementById('p_slider');
+    var geojsonObject = resp.hospitals[idx];
+    for (var i = 0 ; i<geojsonObject.features.length;i++){
+        lnglt = [geojsonObject.features[i].geometry.coordinates[0],geojsonObject.features[i].geometry.coordinates[1]];
+        var feat = new ol.Feature(new ol.geom.Point(ol.proj.transform(lnglt, 'EPSG:4326', 'EPSG:3857')));
+        feat.setId('HOSP_'+i);
+        var style = new ol.style.Style({
+                  image: new ol.style.Icon({
+                      src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Hospital_sign.svg/2000px-Hospital_sign.svg.png',
+                      size: [1024, 1024],
+                      scale: 0.1
+                  })
+              });
+        feat.set('tags',geojsonObject.features[i].properties['tags']);
+        feat.setStyle(style);
+        var vec = vector.getSource();
+        vec.addFeature(feat);
+      }
+}
 
 function checkPop(idx){
     if (JSON.stringify(resp.affected[idx]) === JSON.stringify({})) {
@@ -807,6 +889,7 @@ function drawDispersion(idx) {
     var label = 'dispersion_' + idx;
     clearDispersion();
     clearPopGrid();
+    clearHospGrid();
     vector.getSource().forEachFeature(function(feature) {
         var s = document.getElementById('stat_info');
         for (i = 0; i < s.childNodes.length; i++) {
@@ -876,6 +959,7 @@ function filterPop(idx, thres) {
 
 function drawPopGrid(idx, thres) {
     clearPopGrid();
+    clearHospGrid();
     var slider = document.getElementById('p_slider');
     var geojsonObject = filterPop(idx, thres);
     for (var i = 0 ; i<geojsonObject.features.length;i++){

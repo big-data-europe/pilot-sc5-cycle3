@@ -124,6 +124,23 @@ def class_async(self, disp):
     return {'current': 100, 'total': 100, 'status': 'Task completed!',
             'result': api_methods.pop(cell_pols,disp)}
 
+
+# Celery async task for affected population detection
+@app.route('/hospital/', methods=['POST'])
+def hospital():
+    disp = request.get_json(force=True)
+    task = class_async_hosp.apply_async(args=[disp])
+    response = {
+        'id': task.id
+    }
+    return json.dumps(response)
+
+# Service handling the  affected population detection
+@celery.task(bind=True)
+def class_async_hosp(self, disp):
+    return {'current': 100, 'total': 100, 'status': 'Task completed!',
+            'result': api_methods.hosp(cell_pols,disp)}
+
 # Pseudo main, these lines are global due to the fact that this script returns
 # using Gunicorn, when relocating these lines to a function the models do not
 # load propely

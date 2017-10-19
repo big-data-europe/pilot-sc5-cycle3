@@ -749,6 +749,30 @@ def query(semagrow, cell_id):
 
   return results
 
+def hospital_query(semagrow, cell_id):
+  values = ""
+  for id in cell_id:
+    values = values + "<http://iit.demokritos.gr/"+str(id)+"> "
+  semagrow.setQuery("""
+        PREFIX strdf: <http://strdf.di.uoa.gr/ontology#>
+
+        SELECT ?osm ?point ?tags WHERE {
+          ?cellid strdf:hasGeometry ?geometry .
+          ?osm <http://www.opengis.net/ont/geosparql#asWKT> ?point .
+          ?osm <http://openstreetmap.org/id> ?id .
+          ?s <http://cassandra.semagrow.eu/openstreetmap/hospitals#node_id> ?id .
+          ?s <http://cassandra.semagrow.eu/openstreetmap/hospitals#tags> ?tags .
+          VALUES ?cellid { <http://iit.demokritos.gr/87317> }
+          FILTER strdf:within(?point, ?geometry)
+        }
+  """%values)
+
+  semagrow.setReturnFormat(JSON)
+
+  results = semagrow.queryAndConvert()
+
+  return results
+
 # This is the function called by the controller in order to return affected from
 # the dispersion areas (when querying each id individually).
 def single_pop(cell_pols,disp):
@@ -766,7 +790,7 @@ def single_pop(cell_pols,disp):
     # For each id query SEMAGROW to get more info
     for id in affected_ids:
         try:
-            semagrow = SPARQLWrapper('http://10.0.10.12:9999/SemaGrow/query')
+            semagrow = SPARQLWrapper('http://10.0.10.11:9999/SemaGrow/sparql')
             results = single_query(semagrow,id)
             points = [(Point(float(res['long']['value']),float(res['lat']['value'])),int(res['population']['value']),res['geoname']['value'],res['name']['value']) for res in results['results']['bindings']]
             multi_points.append(points)
@@ -799,7 +823,7 @@ def pop(cell_pols,disp):
     affected_ids = list(set(affected_ids))
     multi_points = []
     # Open endpoint
-    semagrow = SPARQLWrapper('http://10.0.10.12:9999/SemaGrow/query')
+    semagrow = SPARQLWrapper('http://10.0.10.11:9999/SemaGrow/sparql')
     # Batch query
     for batch in range(0,len(affected_ids),semagrow_batch_size):
         results = query(semagrow,affected_ids[batch:batch+semagrow_batch_size])
@@ -812,5 +836,43 @@ def pop(cell_pols,disp):
     # Build response in JSON format
     for p,point in enumerate(multi_points):
         jpols.append(dict(type='Feature', properties={"POP":unicode(point[1]),"URI":unicode(point[2]),"NAME":unicode(point[3])}, geometry=mapping(point[0])))
+    end_res = dict(type='FeatureCollection', crs={ "type": "name", "properties": { "name":"urn:ogc:def:crs:OGC:1.3:CRS84" }},features=jpols)
+    return json.dumps(end_res)
+
+
+# This is the function called by the controller in order to return affected from
+# the dispersion areas (batch id querying).
+def hosp(cell_pols,disp):
+    start = time.time()
+    # Load dispersion in the JSON format
+    disp = json.loads(disp)
+    # Turn JSON into shapely polygons
+    multi = MultiPolygon([shape(pol['geometry']) for pol in disp['features']])
+    # Get intersection with our grid, therefore which cells are being affected_ids
+    # by the dispersion
+    affected_ids = [pol['id'] for pol in cell_pols if multi.intersects(pol['obj'])]
+    # Remove duplicate entries
+    affected_ids = list(set(affected_ids))
+    multi_points = []
+    # Open endpoint
+    semagrow = SPARQLWrapper('http://10.0.10.14:9999/SemaGrow/sparql')
+    # Batch query
+    for batch in range(0,len(affected_ids),semagrow_batch_size):
+        results = hospital_query(semagrow,affected_ids[batch:batch+semagrow_batch_size])
+        for res in results['results']['bindings']:
+            tup = re.match(r'POINT(.*)',res['point']['value']).group(1)
+            tup = tup.replace(')','')
+            tup = tup.replace('(','')
+            lon = tup.split(' ')[0]
+            lat = tup.split(' ')[1]
+            points = [(Point(float(lon),float(lat)),res['tags']['value'].encode('utf-8'))]
+        multi_points.append(points)
+    # Collapse multi points into single list
+    multi_points = list(chain.from_iterable(multi_points))
+    jpols = []
+    timing(start,time.time())
+    # Build response in JSON format
+    for p,point in enumerate(multi_points):
+        jpols.append(dict(type='Feature', properties={"TAGS":unicode(point[1])}, geometry=mapping(point[0])))
     end_res = dict(type='FeatureCollection', crs={ "type": "name", "properties": { "name":"urn:ogc:def:crs:OGC:1.3:CRS84" }},features=jpols)
     return json.dumps(end_res)
