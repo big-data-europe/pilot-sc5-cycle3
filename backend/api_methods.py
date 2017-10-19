@@ -27,6 +27,7 @@ import Queue
 import itertools
 from dbconn import DBConn
 from itertools import chain
+import re
 
 APPS_ROOT = os.path.dirname(os.path.abspath(__file__))
 
