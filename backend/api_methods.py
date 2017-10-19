@@ -864,8 +864,8 @@ def hosp(cell_pols,disp):
             tup = re.match(r'POINT(.*)',res['point']['value']).group(1)
             tup = tup.replace(')','')
             tup = tup.replace('(','')
-            lon = tup.split(' ')[0]
-            lat = tup.split(' ')[1]
+            lon = tup.split(' ')[1]
+            lat = tup.split(' ')[2]
             points = [(Point(float(lon),float(lat)),res['tags']['value'].encode('utf-8'))]
         multi_points.append(points)
     # Collapse multi points into single list
