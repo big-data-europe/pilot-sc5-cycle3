@@ -762,7 +762,7 @@ def hospital_query(semagrow, cell_id):
           ?osm <http://openstreetmap.org/id> ?id .
           ?s <http://cassandra.semagrow.eu/openstreetmap/hospitals#node_id> ?id .
           ?s <http://cassandra.semagrow.eu/openstreetmap/hospitals#tags> ?tags .
-          VALUES ?cellid { <http://iit.demokritos.gr/87317> }
+          VALUES ?cellid { %s }
           FILTER strdf:within(?point, ?geometry)
         }
   """%values)
