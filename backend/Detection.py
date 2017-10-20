@@ -13,7 +13,6 @@ import dataset_utils as utils
 from netCDF4 import Dataset
 from scipy.ndimage.filters import gaussian_filter
 import scipy
-from scipy.misc import imresize
 from sklearn.preprocessing import maxabs_scale
 
 RESIZE_DIM = 167
@@ -53,7 +52,7 @@ class Detection(object):
         # Apply filter for better estimation
         det_map = gaussian_filter(det_map,0.3)
         if resize:
-            det_map = imresize(det_map, (RESIZE_DIM, RESIZE_DIM))
+            det_map = scipy.misc.imresize(det_map, (RESIZE_DIM, RESIZE_DIM))
         # Scale
         det_map_shape = det_map.shape
         det_map = maxabs_scale(det_map.flatten(),axis=1)
